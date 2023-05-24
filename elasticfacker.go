@@ -1,6 +1,7 @@
 package elasticfacker
 
 import (
+	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"strings"
@@ -16,12 +17,12 @@ func NewInMemoryElasticsearch(mock *MockMethods) *InMemoryElasticsearch {
 }
 
 func (es *InMemoryElasticsearch) Start() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", es.handleRequest)
+	r := mux.NewRouter()
+	r.HandleFunc("/", es.handleRequest)
 
 	es.server = &http.Server{
 		Addr:    ":9200",
-		Handler: mux,
+		Handler: r,
 	}
 
 	log.Println("Starting the server on port 9200")
