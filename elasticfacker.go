@@ -11,6 +11,7 @@ func NewInMemoryElasticsearch(mock *MockMethods) *InMemoryElasticsearch {
 		indices: make(map[string]map[string]interface{}),
 		aliases: make(map[string]string),
 		mock:    mock,
+		server:  &http.Server{},
 	}
 }
 
@@ -18,7 +19,23 @@ func (es *InMemoryElasticsearch) Start() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", es.handleRequest)
 
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	es.server = &http.Server{
+		Addr:    ":9200",
+		Handler: mux,
+	}
+
+	log.Println("Starting the server on port 9200")
+
+	err := es.server.ListenAndServe()
+	if err != nil && err != http.ErrServerClosed {
+		log.Fatalf("Could not start server: %s\n", err)
+	}
+}
+
+func (es *InMemoryElasticsearch) Stop() {
+	if es.server != nil {
+		es.server.Close()
+	}
 }
 
 func (es *InMemoryElasticsearch) handleRequest(w http.ResponseWriter, r *http.Request) {
