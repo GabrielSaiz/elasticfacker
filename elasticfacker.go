@@ -16,12 +16,12 @@ func NewInMemoryElasticsearch(mock *MockMethods) *InMemoryElasticsearch {
 	}
 }
 
-func (es *InMemoryElasticsearch) Start() {
+func (es *InMemoryElasticsearch) Start(address string) {
 	r := mux.NewRouter()
 	r.HandleFunc("/", es.handleRequest)
 
 	es.server = &http.Server{
-		Addr:    ":9200",
+		Addr:    address,
 		Handler: r,
 	}
 
