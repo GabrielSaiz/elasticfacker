@@ -9,7 +9,7 @@ type MockMethods struct {
 }
 type InMemoryElasticsearch struct {
 	indices map[string]map[string]interface{}
-	aliases map[string]string
+	aliases map[string]interface{}
 	mock    *MockMethods
 	server  *http.Server
 }
