@@ -16,8 +16,6 @@ func NewInMemoryElasticsearch() *InMemoryElasticsearch {
 	return &InMemoryElasticsearch{
 		indices: make(map[string]map[string]interface{}),
 		aliases: make(map[string]interface{}),
-		//mock:    mock,
-		//server:  &http.Server{},
 	}
 }
 
@@ -35,7 +33,7 @@ func (es *InMemoryElasticsearch) startServer(address string) {
 	r.HandleFunc("/{indexName}", es.handleIndicesExists).Methods("HEAD")                             //esapi.IndicesExistsRequest
 	r.HandleFunc("/{indexName}", es.handleIndicesCreate).Methods("PUT")                              //esapi.IndicesCreateRequest
 	r.HandleFunc("/_cat/indices/{indexNamePattern}", es.handleCatIndices).Methods("GET")             //esapi.CatIndicesRequest
-	r.HandleFunc("/{indexName}/_alias", es.handleIndicesGetAlias).Methods("GET")                     //esapi.IndicesGetAliasRequest
+	r.HandleFunc("/{indexName}/_alias", es.handleIndicesGetAliasFromIndex).Methods("GET")            //esapi.IndicesGetAliasRequest
 	r.HandleFunc("/{indexName}", es.handleIndicesDelete).Methods("DELETE")                           //esapi.IndicesDeleteRequest
 	r.HandleFunc("/_alias/{aliasName}", es.handleIndicesGetAlias).Methods("GET")                     //esapi.IndicesGetAliasRequest
 	r.HandleFunc("/{indexName}/_aliases/{aliasName}", es.handleIndicesDeleteAlias).Methods("DELETE") //esapi.IndicesDeleteAliasRequest
@@ -86,13 +84,19 @@ func (es *InMemoryElasticsearch) handleIndicesCreate(w http.ResponseWriter, r *h
 
 func (es *InMemoryElasticsearch) handleCatIndices(w http.ResponseWriter, r *http.Request) {
 	indexNamePattern := mux.Vars(r)["indexNamePattern"]
-	response := es.IndexExists(indexNamePattern)
+	response := es.GetIndex(indexNamePattern)
+	es.writeResponse(w, response)
+}
+
+func (es *InMemoryElasticsearch) handleIndicesGetAliasFromIndex(w http.ResponseWriter, r *http.Request) {
+	indexName := mux.Vars(r)["indexName"]
+	response := es.GetAliasFromIndex(indexName)
 	es.writeResponse(w, response)
 }
 
 func (es *InMemoryElasticsearch) handleIndicesGetAlias(w http.ResponseWriter, r *http.Request) {
-	indexName := mux.Vars(r)["indexName"]
-	response := es.GetAlias(indexName)
+	aliasName := mux.Vars(r)["aliasName"]
+	response := es.GetAlias(aliasName)
 	es.writeResponse(w, response)
 }
 

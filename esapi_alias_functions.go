@@ -1,29 +1,67 @@
 package elasticfacker
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
-func (es *InMemoryElasticsearch) GetAlias(alias string) *MockMethods {
+func (es *InMemoryElasticsearch) GetAlias(aliasName string) *MockMethods {
 	if es.mock != nil {
 		return es.mock
 	}
 
-	_, exists := es.aliases[alias]
-	var responseStatusCode int
+	_, exists := es.aliases[aliasName]
 	if exists {
-		responseStatusCode = 200
-	} else {
-		responseStatusCode = 404
-	}
+		for index, alias := range es.aliases {
+			if alias == aliasName {
+				jsonData, err := json.Marshal(index)
+				if err != nil {
+					return &MockMethods{
+						StatusCode: 500,
+						Status:     "Internal Server Error",
+					}
+				}
 
-	var bodyResponse string
-	for index, alias := range es.aliases {
-		if alias == alias {
-			bodyResponse = index
+				return &MockMethods{
+					StatusCode:   200,
+					Status:       "OK",
+					BodyAsString: string(jsonData),
+				}
+			}
 		}
 	}
+
 	return &MockMethods{
-		StatusCode:   responseStatusCode,
-		BodyAsString: bodyResponse,
+		StatusCode: 404,
+		Status:     "Not Found",
+	}
+}
+
+func (es *InMemoryElasticsearch) GetAliasFromIndex(indexName string) *MockMethods {
+	if es.mock != nil {
+		return es.mock
+	}
+
+	index, exists := es.indices[indexName]
+	if exists {
+		jsonData, err := json.Marshal(index)
+		if err != nil {
+			return &MockMethods{
+				StatusCode: 500,
+				Status:     "Internal Server Error",
+			}
+		}
+
+		return &MockMethods{
+			StatusCode:   200,
+			Status:       "OK",
+			BodyAsString: string(jsonData),
+		}
+	}
+
+	return &MockMethods{
+		StatusCode: 404,
+		Status:     "Not Found",
 	}
 }
 
