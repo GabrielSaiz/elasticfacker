@@ -95,7 +95,7 @@ func TestElasticApiClient(t *testing.T) {
     subtests := []struct {
         name       string
 		indexName  string
-        expected   bool
+        expected   int
     }{
         {
             name: "Index not found",
@@ -126,7 +126,7 @@ func TestElasticApiClient(t *testing.T) {
                 Index: subtest.indexName,
             }
 
-            res1, err1 := req.Do(context.Background(), esClient)
+            res1, err1 := req1.Do(context.Background(), esClient)
             assert.Nil(t, err1)
             defer res1.Body.Close()
             
@@ -139,7 +139,7 @@ func TestElasticApiClient(t *testing.T) {
                 Index: []string{subtest.indexName},
             }
             
-            res2, err2 := req.Do(context.Background(), esClient)
+            res2, err2 := req2.Do(context.Background(), esClient)
             assert.Nil(t, err2)
 			defer res2.Body.Close()
             
@@ -169,7 +169,7 @@ type MockMethods struct {
 
 ```go
 
-func TestElasticApiClient_DoesIndexExist(t *testing.T) {
+func TestElasticApiClient(t *testing.T) {
 	subtests := []struct {
 		name       string
 		indexName  string
@@ -211,7 +211,7 @@ func TestElasticApiClient_DoesIndexExist(t *testing.T) {
     }
 	
 	esFacker := elasticfacker.NewInMemoryElasticsearch()
-	esFacker.Start("localhost:9300")
+	esFacker.Start("localhost:9200")
 	defer esFacker.Stop()
 
 	for _, subtest := range subtests {
