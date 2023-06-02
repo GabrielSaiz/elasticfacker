@@ -13,3 +13,15 @@ type InMemoryElasticsearch struct {
 	mock    *MockMethods
 	server  *http.Server
 }
+
+type IndexFake struct {
+	Health string `json:"health"`
+	Status string `json:"status"`
+	Index  string `json:"index"`
+}
+
+type ProductIndexFake struct {
+	Aliases map[string]interface{} `json:"aliases"`
+}
+
+type IndexMapFake map[string]ProductIndexFake

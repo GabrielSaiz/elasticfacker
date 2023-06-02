@@ -12,20 +12,24 @@ func (es *InMemoryElasticsearch) GetAlias(aliasName string) *MockMethods {
 
 	_, exists := es.aliases[aliasName]
 	if exists {
-		for index, alias := range es.aliases {
-			if alias == aliasName {
-				jsonData, err := json.Marshal(index)
-				if err != nil {
-					return &MockMethods{
-						StatusCode: 500,
-						Status:     "Internal Server Error",
+		for indexName, index := range es.indices {
+			for aliasNameInIndex, _ := range index {
+				if aliasNameInIndex == aliasName {
+					indices := IndexMapFake{
+						indexName: ProductIndexFake{
+							Aliases: map[string]interface{}{
+								aliasName: struct{}{},
+							},
+						},
 					}
-				}
 
-				return &MockMethods{
-					StatusCode:   200,
-					Status:       "OK",
-					BodyAsString: string(jsonData),
+					jsonData, _ := json.Marshal(indices)
+
+					return &MockMethods{
+						StatusCode:   200,
+						Status:       "OK",
+						BodyAsString: string(jsonData),
+					}
 				}
 			}
 		}
@@ -44,13 +48,12 @@ func (es *InMemoryElasticsearch) GetAliasFromIndex(indexName string) *MockMethod
 
 	index, exists := es.indices[indexName]
 	if exists {
-		jsonData, err := json.Marshal(index)
-		if err != nil {
-			return &MockMethods{
-				StatusCode: 500,
-				Status:     "Internal Server Error",
-			}
+		indices := IndexMapFake{
+			indexName: ProductIndexFake{
+				Aliases: index,
+			},
 		}
+		jsonData, _ := json.Marshal(indices)
 
 		return &MockMethods{
 			StatusCode:   200,
@@ -65,25 +68,34 @@ func (es *InMemoryElasticsearch) GetAliasFromIndex(indexName string) *MockMethod
 	}
 }
 
-func (es *InMemoryElasticsearch) PutAlias(index string, alias string) *MockMethods {
+func (es *InMemoryElasticsearch) PutAlias(indexName string, aliasName string) *MockMethods {
 	if es.mock != nil {
 		return es.mock
 	}
 
-	indexExistsResponse := es.IndexExists(index)
+	indexExistsResponse := es.IndexExists(indexName)
 	if indexExistsResponse.StatusCode != 200 {
 		return &MockMethods{
 			StatusCode:   500,
 			Status:       "Internal Server Error",
-			BodyAsString: fmt.Sprintf("{\"error\":\"Index %s does not exist\"}", index),
+			BodyAsString: fmt.Sprintf("{\"error\":\"Index %s does not exist\"}", indexName),
 		}
 	}
 
-	es.aliases[alias] = make(map[string]interface{})
-	es.indices[index][alias] = es.aliases[alias]
+	_, exists := es.aliases[aliasName]
+	if exists {
+		return &MockMethods{
+			StatusCode: 409,
+			Status:     "Conflict",
+		}
+	}
+
+	es.aliases[aliasName] = make(map[string]interface{})
+	es.indices[indexName][aliasName] = es.aliases[aliasName]
 
 	return &MockMethods{
 		StatusCode: 200,
+		Status:     "OK",
 	}
 }
 
@@ -104,21 +116,13 @@ func (es *InMemoryElasticsearch) DeleteAlias(index string, alias string) *MockMe
 	aliasExistsResponse := es.GetAlias(alias)
 	if aliasExistsResponse.StatusCode != 200 {
 		return &MockMethods{
-			StatusCode:   500,
-			Status:       "Internal Server Error",
+			StatusCode:   404,
+			Status:       "Not Found",
 			BodyAsString: fmt.Sprintf("{\"error\":\"Alias %s does not exist\"}", alias),
 		}
 	}
 
 	indexAliases, _ := es.indices[index]
-	_, existAliasInIndex := indexAliases[alias]
-	if !existAliasInIndex {
-		return &MockMethods{
-			StatusCode:   404,
-			Status:       "Not Found",
-			BodyAsString: fmt.Sprintf("{\"error\":\"Alias %s does not exist assicated to index %s\"}", alias, index),
-		}
-	}
 
 	delete(es.aliases, alias)
 	delete(indexAliases, alias)
