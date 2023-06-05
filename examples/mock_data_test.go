@@ -5,6 +5,8 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/stretchr/testify/assert"
+	"strconv"
+	"strings"
 
 	"context"
 	"github.com/gabrielsaiz/elasticfacker"
@@ -625,4 +627,139 @@ func TestIndicesPutAliasRequest(t *testing.T) {
 			assert.Equal(t, subtest.expected, res.StatusCode == 200)
 		})
 	}
+}
+
+func TestSearchTemplate(t *testing.T) {
+	subtests := []struct {
+		name       string
+		indexName  string
+		body       *strings.Reader
+		expected   bool
+		mockMethod elasticfacker.MockMethods
+	}{
+		{
+			name:      "IndexNotFound",
+			indexName: "products-test-not-found",
+			body:      buildBody("templateId", "test", 10),
+			mockMethod: elasticfacker.MockMethods{
+				StatusCode: 404,
+				Status:     "Not Found",
+			},
+			expected: false,
+		},
+		{
+			name:      "SearchTemplateEmpty",
+			indexName: "products-test",
+			body:      buildBody("templateId", "test", 10),
+			mockMethod: elasticfacker.MockMethods{
+				StatusCode: 200,
+				Status:     "OK",
+				BodyAsString: `{
+				  "took": 21,
+				  "timed_out": false,
+				  "_shards": {
+					"total": 1,
+					"successful": 1,
+					"skipped": 0,
+					"failed": 0
+				  },
+				  "hits": {
+					"total": {
+					  "value": 961,
+					  "relation": "eq"
+					},
+					"max_score": 25.29875,
+					"hits": [
+					  {
+						"_index": "products-test",
+						"_id": "001681000201",
+						"_score": 25.29875,
+						"_source": {
+						  "code": "001681000201"
+						}
+					  },
+					  {
+						"_index": "products-test",
+						"_id": "001136003701",
+						"_score": 25.290382,
+						"_source": {
+						  "code": "001136003701"
+						}
+					  },
+					  {
+						"_index": "products-test",
+						"_id": "002026002002",
+						"_score": 25.290382,
+						"_source": {
+						  "code": "002026002002"
+						}
+					  },
+					  {
+						"_index": "products-test",
+						"_id": "002026002801",
+						"_score": 25.290382,
+						"_source": {
+						  "code": "002026002801"
+						}
+					  },
+					  {
+						"_index": "products-moemax-de_at-2023051209",
+						"_id": "002502001801",
+						"_score": 24.512388,
+						"_source": {
+						  "code": "002502001801"
+						}
+					  }
+					]
+				  }
+				}`,
+			},
+			expected: true,
+		},
+	}
+
+	esClient, error := elasticsearch.NewDefaultClient()
+	if error != nil {
+		t.Errorf("Error when creating the Elasticsearch client: %s", error)
+	}
+
+	esFacker := elasticfacker.NewInMemoryElasticsearch()
+	esFacker.Start("localhost:9200")
+	defer esFacker.Stop()
+
+	for _, subtest := range subtests {
+		time.Sleep(1 * time.Second)
+
+		t.Run(subtest.name, func(t *testing.T) {
+			esFacker.SetMockMethods(&subtest.mockMethod)
+
+			req := esapi.SearchTemplateRequest{
+				Index: []string{subtest.indexName},
+				Body:  subtest.body,
+			}
+
+			res, err := req.Do(context.Background(), esClient)
+			assert.Nil(t, err)
+			defer res.Body.Close()
+
+			assert.Equal(t, subtest.expected, res.StatusCode == 200)
+		})
+	}
+}
+
+func buildBody(templateId, searchTerm string, size int) *strings.Reader {
+	esReq := elasticfacker.ElasticSearchRequest{
+		Id: templateId,
+		Params: elasticfacker.ElasticSearchRequestParams{
+			SearchTerm: searchTerm,
+			Size:       strconv.Itoa(size),
+		},
+	}
+	queryJSON, err := json.Marshal(esReq)
+	if err != nil {
+		panic(err)
+	}
+
+	body := strings.NewReader(string(queryJSON))
+	return body
 }

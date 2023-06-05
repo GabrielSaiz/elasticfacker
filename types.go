@@ -8,10 +8,11 @@ type MockMethods struct {
 	BodyAsString string
 }
 type InMemoryElasticsearch struct {
-	indices map[string]map[string]interface{}
-	aliases map[string]interface{}
-	mock    *MockMethods
-	server  *http.Server
+	indicesAlias     map[string]map[string]interface{}
+	indicesDocuments map[string][]Document
+	aliases          map[string]interface{}
+	mock             *MockMethods
+	server           *http.Server
 }
 
 type IndexFake struct {
@@ -25,3 +26,43 @@ type ProductIndexFake struct {
 }
 
 type IndexMapFake map[string]ProductIndexFake
+
+type ElasticSearchRequest struct {
+	Id     string                     `json:"id"`
+	Params ElasticSearchRequestParams `json:"params"`
+}
+
+type ElasticSearchRequestParams struct {
+	SearchTerm string `json:"search_term"`
+	Size       string `json:"size"`
+}
+
+type Document struct {
+	Index  string                 `json:"_index"`
+	Id     string                 `json:"_id"`
+	Score  string                 `json:"_score"`
+	Source map[string]interface{} `json:"_source"`
+}
+
+type ElasticSearchResponseFake struct {
+	Took   int                             `json:"took"`
+	Shards ElasticSearchResponseFakeShards `json:"_shards"`
+	Hits   ElasticSearchResponseFakeHits   `json:"hits"`
+}
+
+type ElasticSearchResponseFakeShards struct {
+	Total      int `json:"total"`
+	Successful int `json:"successful"`
+	Skipped    int `json:"skipped"`
+	Failed     int `json:"failed"`
+}
+
+type ElasticSearchResponseFakeHits struct {
+	Total ElasticSearchResponseFakeHitsTotal `json:"total"`
+	Hits  []Document                         `json:"hits"`
+}
+
+type ElasticSearchResponseFakeHitsTotal struct {
+	Value    int    `json:"value"`
+	Relation string `json:"relation"`
+}

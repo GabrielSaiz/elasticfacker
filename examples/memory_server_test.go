@@ -7,6 +7,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/gabrielsaiz/elasticfacker"
 	"github.com/stretchr/testify/assert"
+	"strings"
 	"testing"
 	"time"
 )
@@ -355,6 +356,82 @@ func TestIndicesAliasRequest(t *testing.T) {
 				defer res.Body.Close()
 
 				assert.True(t, res.StatusCode == 200)
+			}
+
+		})
+	}
+}
+
+func TestSearchTemplateRequest(t *testing.T) {
+	subtests := []struct {
+		name      string
+		indexName string
+		body      *strings.Reader
+	}{
+		{
+			name:      "BadRequest",
+			indexName: "products-test",
+			body:      strings.NewReader("{badRequest}"),
+		},
+		{
+			name:      "IndexNotFound",
+			indexName: "products-test-not-found",
+			body:      buildBody("templateId", "test", 10),
+		},
+		{
+			name:      "SearchTemplateEmpty",
+			indexName: "products-test",
+			body:      buildBody("templateId", "test", 10),
+		},
+	}
+
+	esClient, error := elasticsearch.NewDefaultClient()
+	if error != nil {
+		t.Errorf("Error when creating the Elasticsearch client: %s", error)
+	}
+
+	esFacker := elasticfacker.NewInMemoryElasticsearch()
+	esFacker.Start("localhost:9200")
+	defer esFacker.Stop()
+
+	req := esapi.IndicesCreateRequest{
+		Index: "products-test",
+	}
+
+	res, err := req.Do(context.Background(), esClient)
+	assert.Nil(t, err)
+	defer res.Body.Close()
+
+	assert.True(t, res.StatusCode == 200)
+
+	for _, subtest := range subtests {
+		time.Sleep(1 * time.Second)
+
+		t.Run(subtest.name, func(t *testing.T) {
+			req := esapi.SearchTemplateRequest{
+				Index: []string{subtest.indexName},
+				Body:  subtest.body,
+			}
+
+			switch subtest.name {
+			case "BadRequest":
+				res, err := req.Do(context.Background(), esClient)
+				assert.Nil(t, err)
+				defer res.Body.Close()
+
+				assert.Equal(t, 400, res.StatusCode)
+			case "IndexNotFound":
+				res, err := req.Do(context.Background(), esClient)
+				assert.Nil(t, err)
+				defer res.Body.Close()
+
+				assert.Equal(t, 404, res.StatusCode)
+			case "SearchTemplateEmpty":
+				res, err := req.Do(context.Background(), esClient)
+				assert.Nil(t, err)
+				defer res.Body.Close()
+
+				assert.Equal(t, 200, res.StatusCode)
 			}
 
 		})

@@ -12,7 +12,7 @@ func (es *InMemoryElasticsearch) GetAlias(aliasName string) *MockMethods {
 
 	_, exists := es.aliases[aliasName]
 	if exists {
-		for indexName, index := range es.indices {
+		for indexName, index := range es.indicesAlias {
 			for aliasNameInIndex, _ := range index {
 				if aliasNameInIndex == aliasName {
 					indices := IndexMapFake{
@@ -46,7 +46,7 @@ func (es *InMemoryElasticsearch) GetAliasFromIndex(indexName string) *MockMethod
 		return es.mock
 	}
 
-	index, exists := es.indices[indexName]
+	index, exists := es.indicesAlias[indexName]
 	if exists {
 		indices := IndexMapFake{
 			indexName: ProductIndexFake{
@@ -91,7 +91,7 @@ func (es *InMemoryElasticsearch) PutAlias(indexName string, aliasName string) *M
 	}
 
 	es.aliases[aliasName] = make(map[string]interface{})
-	es.indices[indexName][aliasName] = es.aliases[aliasName]
+	es.indicesAlias[indexName][aliasName] = es.aliases[aliasName]
 
 	return &MockMethods{
 		StatusCode: 200,
@@ -122,7 +122,7 @@ func (es *InMemoryElasticsearch) DeleteAlias(index string, alias string) *MockMe
 		}
 	}
 
-	indexAliases, _ := es.indices[index]
+	indexAliases, _ := es.indicesAlias[index]
 
 	delete(es.aliases, alias)
 	delete(indexAliases, alias)

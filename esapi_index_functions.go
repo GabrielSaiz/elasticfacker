@@ -9,7 +9,7 @@ func (es *InMemoryElasticsearch) IndexExists(index string) *MockMethods {
 	if es.mock != nil {
 		return es.mock
 	}
-	_, exists := es.indices[index]
+	_, exists := es.indicesAlias[index]
 
 	var responseStatusCode int
 	if exists {
@@ -29,7 +29,7 @@ func (es *InMemoryElasticsearch) GetIndex(indexPattern string) *MockMethods {
 
 	indices := make(map[string]interface{})
 	indicesStruct := make([]IndexFake, 0)
-	for indexName, index := range es.indices {
+	for indexName, index := range es.indicesAlias {
 		re := regexp.MustCompile(indexPattern)
 
 		if re.MatchString(indexName) {
@@ -65,7 +65,7 @@ func (es *InMemoryElasticsearch) CreateIndex(index string) *MockMethods {
 		return es.mock
 	}
 
-	_, exists := es.indices[index]
+	_, exists := es.indicesAlias[index]
 
 	var responseStatusCode int
 	var responseStatus string
@@ -73,7 +73,8 @@ func (es *InMemoryElasticsearch) CreateIndex(index string) *MockMethods {
 		responseStatusCode = 409
 		responseStatus = "Conflict"
 	} else {
-		es.indices[index] = make(map[string]interface{})
+		es.indicesAlias[index] = make(map[string]interface{})
+		es.indicesDocuments[index] = make([]Document, 0)
 
 		responseStatusCode = 200
 		responseStatus = "OK"
@@ -89,7 +90,7 @@ func (es *InMemoryElasticsearch) DeleteIndex(index string) *MockMethods {
 		return es.mock
 	}
 
-	_, exists := es.indices[index]
+	_, exists := es.indicesAlias[index]
 	if !exists {
 		return &MockMethods{
 			StatusCode: 404,
@@ -97,7 +98,8 @@ func (es *InMemoryElasticsearch) DeleteIndex(index string) *MockMethods {
 		}
 	}
 
-	delete(es.indices, index)
+	delete(es.indicesAlias, index)
+	delete(es.indicesDocuments, index)
 
 	return &MockMethods{
 		StatusCode: 200,

@@ -3,6 +3,7 @@ package elasticfacker
 import (
 	"encoding/json"
 	"github.com/gorilla/mux"
+	"io"
 	"log"
 	"net/http"
 )
@@ -14,8 +15,9 @@ const (
 
 func NewInMemoryElasticsearch() *InMemoryElasticsearch {
 	return &InMemoryElasticsearch{
-		indices: make(map[string]map[string]interface{}),
-		aliases: make(map[string]interface{}),
+		indicesAlias:     make(map[string]map[string]interface{}),
+		indicesDocuments: make(map[string][]Document),
+		aliases:          make(map[string]interface{}),
 	}
 }
 
@@ -38,6 +40,8 @@ func (es *InMemoryElasticsearch) startServer(address string) {
 	r.HandleFunc("/_alias/{aliasName}", es.handleIndicesGetAlias).Methods("GET")                     //esapi.IndicesGetAliasRequest
 	r.HandleFunc("/{indexName}/_aliases/{aliasName}", es.handleIndicesDeleteAlias).Methods("DELETE") //esapi.IndicesDeleteAliasRequest
 	r.HandleFunc("/{indexName}/_aliases/{aliasName}", es.handleIndicesPutAlias).Methods("PUT")       //esapi.IndicesPutAliasRequest
+
+	r.HandleFunc("/{indexName}/_search/template", es.handleSearchTemplate).Methods("POST") //esapi.SearchTemplateRequest
 
 	es.server = &http.Server{
 		Addr:    address,
@@ -117,6 +121,20 @@ func (es *InMemoryElasticsearch) handleIndicesPutAlias(w http.ResponseWriter, r 
 	indexName := mux.Vars(r)["indexName"]
 	aliasName := mux.Vars(r)["aliasName"]
 	response := es.PutAlias(indexName, aliasName)
+	es.writeResponse(w, response)
+}
+
+func (es *InMemoryElasticsearch) handleSearchTemplate(w http.ResponseWriter, r *http.Request) {
+	indexName := mux.Vars(r)["indexName"]
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Error reading body: %v", err)
+		http.Error(w, "can't read body", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	response := es.SearchTemplate(indexName, body)
 	es.writeResponse(w, response)
 }
 
