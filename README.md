@@ -29,6 +29,7 @@ Implemented operations:
 - DELETE /{indexName}/_aliases/{aliasName} -> esapi.IndicesDeleteAliasRequest
 
 - POST /{indexName}/_search/template -> esapi.SearchRequestTemplate
+- POST /{indexName}/_search -> esapi.SearchRequest
 
 
 ## How to use

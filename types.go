@@ -32,6 +32,12 @@ type ElasticSearchRequest struct {
 	Params ElasticSearchRequestParams `json:"params"`
 }
 
+type ElasticSearchRequestScriptQuery struct {
+	Size   string      `json:"size"`
+	Source []string    `json:"_source,omitempty"`
+	Query  interface{} `json:"query"`
+}
+
 type ElasticSearchRequestParams struct {
 	SearchTerm string `json:"search_term"`
 	Size       string `json:"size"`

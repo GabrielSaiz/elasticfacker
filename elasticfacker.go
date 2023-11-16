@@ -42,6 +42,7 @@ func (es *InMemoryElasticsearch) startServer(address string) {
 	r.HandleFunc("/{indexName}/_aliases/{aliasName}", es.handleIndicesPutAlias).Methods("PUT")       //esapi.IndicesPutAliasRequest
 
 	r.HandleFunc("/{indexName}/_search/template", es.handleSearchTemplate).Methods("POST") //esapi.SearchTemplateRequest
+	r.HandleFunc("/{indexName}/_search", es.handleSearch).Methods("POST")                  //esapi.SearchRequest
 
 	es.server = &http.Server{
 		Addr:    address,
@@ -135,6 +136,20 @@ func (es *InMemoryElasticsearch) handleSearchTemplate(w http.ResponseWriter, r *
 	defer r.Body.Close()
 
 	response := es.SearchTemplate(indexName, body)
+	es.writeResponse(w, response)
+}
+
+func (es *InMemoryElasticsearch) handleSearch(w http.ResponseWriter, r *http.Request) {
+	indexName := mux.Vars(r)["indexName"]
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Error reading body: %v", err)
+		http.Error(w, "can't read body", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	response := es.Search(indexName, body)
 	es.writeResponse(w, response)
 }
 

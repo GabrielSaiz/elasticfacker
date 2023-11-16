@@ -437,3 +437,79 @@ func TestSearchTemplateRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestSearchRequest(t *testing.T) {
+	subtests := []struct {
+		name      string
+		indexName string
+		body      *strings.Reader
+	}{
+		{
+			name:      "BadRequest",
+			indexName: "products-test",
+			body:      strings.NewReader("{badRequest}"),
+		},
+		{
+			name:      "IndexNotFound",
+			indexName: "products-test-not-found",
+			body:      buildScriptQueryBody("test", 10),
+		},
+		{
+			name:      "SearchEmpty",
+			indexName: "products-test",
+			body:      buildScriptQueryBody("test", 10),
+		},
+	}
+
+	esClient, error := elasticsearch.NewDefaultClient()
+	if error != nil {
+		t.Errorf("Error when creating the Elasticsearch client: %s", error)
+	}
+
+	esFacker := elasticfacker.NewInMemoryElasticsearch()
+	esFacker.Start("localhost:9200")
+	defer esFacker.Stop()
+
+	req := esapi.IndicesCreateRequest{
+		Index: "products-test",
+	}
+
+	res, err := req.Do(context.Background(), esClient)
+	assert.Nil(t, err)
+	defer res.Body.Close()
+
+	assert.True(t, res.StatusCode == 200)
+
+	for _, subtest := range subtests {
+		time.Sleep(1 * time.Second)
+
+		t.Run(subtest.name, func(t *testing.T) {
+			req := esapi.SearchRequest{
+				Index: []string{subtest.indexName},
+				Body:  subtest.body,
+			}
+
+			switch subtest.name {
+			case "BadRequest":
+				res, err := req.Do(context.Background(), esClient)
+				assert.Nil(t, err)
+				defer res.Body.Close()
+
+				assert.Equal(t, 400, res.StatusCode)
+			case "IndexNotFound":
+				res, err := req.Do(context.Background(), esClient)
+				assert.Nil(t, err)
+				defer res.Body.Close()
+
+				assert.Equal(t, 404, res.StatusCode)
+			case "SearchEmpty":
+				res, err := req.Do(context.Background(), esClient)
+				assert.Nil(t, err)
+				defer res.Body.Close()
+
+				assert.Equal(t, 200, res.StatusCode)
+			}
+
+		})
+	}
+}

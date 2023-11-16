@@ -22,6 +22,28 @@ func (es *InMemoryElasticsearch) SearchTemplate(indexName string, body []byte) *
 		}
 	}
 
+	return response(es, indexName)
+}
+
+func (es *InMemoryElasticsearch) Search(indexName string, body []byte) *MockMethods {
+	if es.mock != nil {
+		return es.mock
+	}
+
+	var searchRequest ElasticSearchRequestScriptQuery
+	err := json.Unmarshal(body, &searchRequest)
+	if err != nil {
+		return &MockMethods{
+			StatusCode:   400,
+			Status:       "Bad Request",
+			BodyAsString: fmt.Sprintf("{\"error\":\"%s\"}", err.Error()),
+		}
+	}
+
+	return response(es, indexName)
+}
+
+func response(es *InMemoryElasticsearch, indexName string) *MockMethods {
 	indexDocuments, exists := es.indicesDocuments[indexName]
 	if !exists {
 		return &MockMethods{
@@ -38,7 +60,7 @@ func (es *InMemoryElasticsearch) SearchTemplate(indexName string, body []byte) *
 		total = len(indexDocuments)
 	}
 
-	searchTemplateResponse := ElasticSearchResponseFake{
+	searchResponse := ElasticSearchResponseFake{
 		Took: rand.New(rand.NewSource(time.Now().UnixNano())).Intn(20),
 		Shards: ElasticSearchResponseFakeShards{
 			Total:      total,
@@ -55,11 +77,10 @@ func (es *InMemoryElasticsearch) SearchTemplate(indexName string, body []byte) *
 		},
 	}
 
-	jsonData, _ := json.Marshal(searchTemplateResponse)
+	jsonData, _ := json.Marshal(searchResponse)
 	return &MockMethods{
 		StatusCode:   200,
 		Status:       "OK",
 		BodyAsString: string(jsonData),
 	}
-
 }
