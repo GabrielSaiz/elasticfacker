@@ -56,6 +56,11 @@ type ElasticSearchResponseFake struct {
 	Hits   ElasticSearchResponseFakeHits   `json:"hits"`
 }
 
+type ElasticSearchCountResponseFake struct {
+	Count  int                             `json:"count"`
+	Shards ElasticSearchResponseFakeShards `json:"_shards"`
+}
+
 type ElasticSearchResponseFakeShards struct {
 	Total      int `json:"total"`
 	Successful int `json:"successful"`

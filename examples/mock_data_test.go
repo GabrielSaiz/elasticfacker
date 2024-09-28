@@ -866,6 +866,74 @@ func TestSearch(t *testing.T) {
 	}
 }
 
+func TestCount(t *testing.T) {
+	subtests := []struct {
+		name       string
+		indexName  string
+		body       *strings.Reader
+		expected   bool
+		mockMethod elasticfacker.MockMethods
+	}{
+		{
+			name:      "IndexNotFound",
+			indexName: "products-test-not-found",
+			body:      buildScriptQueryBody("test", 10),
+			mockMethod: elasticfacker.MockMethods{
+				StatusCode: 404,
+				Status:     "Not Found",
+			},
+			expected: false,
+		},
+		{
+			name:      "CountTemplateEmpty",
+			indexName: "products-test",
+			body:      buildScriptQueryBody("test", 10),
+			mockMethod: elasticfacker.MockMethods{
+				StatusCode: 200,
+				Status:     "OK",
+				BodyAsString: `{
+				  "count": 21,
+				  "_shards": {
+					"total": 1,
+					"successful": 1,
+					"skipped": 0,
+					"failed": 0
+				  },
+				}`,
+			},
+			expected: true,
+		},
+	}
+
+	esClient, error := elasticsearch.NewDefaultClient()
+	if error != nil {
+		t.Errorf("Error when creating the Elasticsearch client: %s", error)
+	}
+
+	esFacker := elasticfacker.NewInMemoryElasticsearch()
+	esFacker.Start("localhost:9200")
+	defer esFacker.Stop()
+
+	for _, subtest := range subtests {
+		time.Sleep(1 * time.Second)
+
+		t.Run(subtest.name, func(t *testing.T) {
+			esFacker.SetMockMethods(&subtest.mockMethod)
+
+			req := esapi.CountRequest{
+				Index: []string{subtest.indexName},
+				Body:  subtest.body,
+			}
+
+			res, err := req.Do(context.Background(), esClient)
+			assert.Nil(t, err)
+			defer res.Body.Close()
+
+			assert.Equal(t, subtest.expected, res.StatusCode == 200)
+		})
+	}
+}
+
 func buildBody(templateId, searchTerm string, size int) *strings.Reader {
 	esReq := elasticfacker.ElasticSearchRequest{
 		Id: templateId,

@@ -30,6 +30,7 @@ Implemented operations:
 
 - POST /{indexName}/_search/template -> esapi.SearchRequestTemplate
 - POST /{indexName}/_search -> esapi.SearchRequest
+- POST /{indexName}/_count -> esapi.CountRequest
 
 
 ## How to use

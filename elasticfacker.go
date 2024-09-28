@@ -43,6 +43,7 @@ func (es *InMemoryElasticsearch) startServer(address string) {
 
 	r.HandleFunc("/{indexName}/_search/template", es.handleSearchTemplate).Methods("POST") //esapi.SearchTemplateRequest
 	r.HandleFunc("/{indexName}/_search", es.handleSearch).Methods("POST")                  //esapi.SearchRequest
+	r.HandleFunc("/{indexName}/_count", es.handleCount).Methods("POST")                    //esapi.CountRequest
 
 	es.server = &http.Server{
 		Addr:    address,
@@ -150,6 +151,20 @@ func (es *InMemoryElasticsearch) handleSearch(w http.ResponseWriter, r *http.Req
 	defer r.Body.Close()
 
 	response := es.Search(indexName, body)
+	es.writeResponse(w, response)
+}
+
+func (es *InMemoryElasticsearch) handleCount(w http.ResponseWriter, r *http.Request) {
+	indexName := mux.Vars(r)["indexName"]
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Error reading body: %v", err)
+		http.Error(w, "can't read body", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	response := es.Count(indexName, body)
 	es.writeResponse(w, response)
 }
 

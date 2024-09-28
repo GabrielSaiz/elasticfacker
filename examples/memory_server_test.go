@@ -3,6 +3,7 @@ package examples
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/gabrielsaiz/elasticfacker"
@@ -13,7 +14,7 @@ import (
 )
 
 func TestIndicesRequest(t *testing.T) {
-
+	time.Sleep(1 * time.Second)
 	subtests := []struct {
 		name      string
 		indexName string
@@ -168,6 +169,7 @@ func TestIndicesRequest(t *testing.T) {
 }
 
 func TestIndicesAliasRequest(t *testing.T) {
+	time.Sleep(1 * time.Second)
 	subtests := []struct {
 		name      string
 		indexName string
@@ -363,6 +365,7 @@ func TestIndicesAliasRequest(t *testing.T) {
 }
 
 func TestSearchTemplateRequest(t *testing.T) {
+	time.Sleep(1 * time.Second)
 	subtests := []struct {
 		name      string
 		indexName string
@@ -439,6 +442,7 @@ func TestSearchTemplateRequest(t *testing.T) {
 }
 
 func TestSearchRequest(t *testing.T) {
+	time.Sleep(1 * time.Second)
 	subtests := []struct {
 		name      string
 		indexName string
@@ -503,6 +507,87 @@ func TestSearchRequest(t *testing.T) {
 
 				assert.Equal(t, 404, res.StatusCode)
 			case "SearchEmpty":
+				res, err := req.Do(context.Background(), esClient)
+				assert.Nil(t, err)
+				defer res.Body.Close()
+
+				assert.Equal(t, 200, res.StatusCode)
+			}
+
+		})
+	}
+}
+
+func TestCountRequest(t *testing.T) {
+	time.Sleep(1 * time.Second)
+	subtests := []struct {
+		name      string
+		indexName string
+		body      *strings.Reader
+	}{
+		{
+			name:      "BadRequest",
+			indexName: "products-test",
+			body:      strings.NewReader("{badRequest}"),
+		},
+		{
+			name:      "IndexNotFound",
+			indexName: "products-test-not-found",
+			body:      buildScriptQueryBody("test", 10),
+		},
+		{
+			name:      "CountZero",
+			indexName: "products-test",
+			body:      buildScriptQueryBody("test", 10),
+		},
+	}
+
+	esClient, error := elasticsearch.NewDefaultClient()
+	if error != nil {
+		t.Errorf("Error when creating the Elasticsearch client: %s", error)
+	}
+
+	esFacker := elasticfacker.NewInMemoryElasticsearch()
+	esFacker.Start("localhost:9200")
+	defer esFacker.Stop()
+
+	req := esapi.IndicesCreateRequest{
+		Index: "products-test",
+	}
+
+	fmt.Printf("Req: %v \n", req)
+	fmt.Printf("Context: %v \n", context.Background())
+	fmt.Printf("esClient: %v \n", esClient)
+
+	res, err := req.Do(context.Background(), esClient)
+	assert.Nil(t, err)
+	defer res.Body.Close()
+
+	assert.True(t, res.StatusCode == 200)
+
+	for _, subtest := range subtests {
+		time.Sleep(1 * time.Second)
+
+		t.Run(subtest.name, func(t *testing.T) {
+			req := esapi.CountRequest{
+				Index: []string{subtest.indexName},
+				Body:  subtest.body,
+			}
+
+			switch subtest.name {
+			case "BadRequest":
+				res, err := req.Do(context.Background(), esClient)
+				assert.Nil(t, err)
+				defer res.Body.Close()
+
+				assert.Equal(t, 400, res.StatusCode)
+			case "IndexNotFound":
+				res, err := req.Do(context.Background(), esClient)
+				assert.Nil(t, err)
+				defer res.Body.Close()
+
+				assert.Equal(t, 404, res.StatusCode)
+			case "CountZero":
 				res, err := req.Do(context.Background(), esClient)
 				assert.Nil(t, err)
 				defer res.Body.Close()
